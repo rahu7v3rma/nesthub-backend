@@ -1,0 +1,156 @@
+:root {
+    --primary-color: rgb(237, 105, 66);
+    --secondary-color: rgb(36, 32, 81);
+    --text-color-light: white;
+}
+
+#header {
+    background-color: var(--primary-color);
+}
+
+#header a:link,
+#header a:visited,
+#logout-form button {
+    color: var(--secondary-color);
+}
+
+h1 {
+    color: var(--secondary-color);
+}
+
+button,
+.button,
+.submit-row input[type="submit"] {
+    background-color: var(--primary-color) !important;
+    color: var(--text-color-light) !important;
+}
+
+#changelist.actions.button {
+    background: none !important;
+}
+
+#toolbar form input[type="submit"] {
+    background: none !important;
+    background-color: var(--primary-color) !important;
+    color: var(--text-color-light) !important;
+}
+
+.toggle-nav-sidebar {
+    background: none !important;
+    color: black !important;
+}
+
+.module caption {
+    background-color: var(--primary-color);
+}
+
+.module caption a {
+    color: var(--secondary-color) !important;
+}
+
+.object-tools a {
+    background-color: var(--primary-color) !important;
+}
+
+#user-tools {
+    float: right;
+    margin: 0 0 0 20px;
+    text-align: right;
+}
+
+#user-tools,
+#logout-form button {
+    padding: 0;
+    font-weight: 300;
+    font-size: 0.6875rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--secondary-color);
+}
+
+div.breadcrumbs {
+    background: var(--primary-color);
+    padding: 10px 40px;
+    border: none;
+    color: var(--secondary-color);
+    text-align: left;
+}
+
+div.breadcrumbs a {
+    color: var(--secondary-color);
+}
+
+div.breadcrumbs a:focus,
+div.breadcrumbs a:hover {
+    color: var(--secondary-color);
+}
+
+.module h2,
+.module caption,
+.inline-group h2 {
+    margin: 0;
+    padding: 8px;
+    font-weight: 400;
+    font-size: 0.8125rem;
+    text-align: left;
+    background: var(--primary-color);
+    color: var(--secondary-color);
+}
+
+#header a:link,
+#header a:visited,
+#logout-form button {
+    color: var(--secondary-color) !important;
+}
+
+.tab-wrapper {
+    overflow-x: auto;
+    /* Enable horizontal scroll */
+    white-space: nowrap;
+    width: 100%;
+    border-bottom: 1px solid #ccc;
+}
+
+.tab {
+    display: inline-flex;
+    gap: 0.6rem;
+    padding: 10px 0;
+    flex-wrap: nowrap;
+}
+
+.tab button {
+    background-color: white !important;
+    border-color: rgb(237, 105, 66);
+    color: rgb(237, 105, 66) !important;
+    background-color: inherit;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 5px 20px;
+    transition: 0.3s;
+    border-radius: 12px;
+    font-size: 17px;
+    text-align: left;
+    border: 2px solid rgb(237, 105, 66);
+    /* Default border */
+    color: black;
+    /* Default text color */
+}
+
+.tab button:hover {
+    background-color: #ddd;
+}
+
+.tab button.active {
+    background-color: rgb(237, 105, 66) !important;
+    /* Active tab background color */
+    border-color: rgb(237, 105, 66);
+    /* Active tab border color */
+    color: white !important;
+    /* Active tab text color */
+}
+
+.tabcontent {
+    border-top: none;
+    width: 100%;
+}

@@ -1,0 +1,14 @@
+{% if first_name %}
+Dear {{ first_name }},
+{% else %}
+Hi,
+{% endif %}
+
+Here is your 2FA token to access your account securely:
+
+{{ token }}
+
+Please use this code within the next few minutes to complete your login.
+
+Best regards,
+The NH Team

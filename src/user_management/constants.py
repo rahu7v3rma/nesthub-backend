@@ -1,0 +1,6 @@
+INVALID_REQUEST = 'Invalid request data.'
+INVALID_CREDENTIALS = 'Invalid email or password.'
+ACCOUNT_NOT_VERIFIED = 'Account is not verified. Please verify your email.'
+SIGN_IN_SUCCESS = 'User successfully signed in.'
+EMAIL_REQUIRED = 'Email is required.'
+PASSWORD_REQUIRED = 'Password is required.'

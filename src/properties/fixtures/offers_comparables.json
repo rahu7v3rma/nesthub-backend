@@ -1,0 +1,104 @@
+[
+    {
+        "model": "properties.propertymedia",
+        "pk": 1,
+        "fields": {
+            "property_id": 1,
+            "image": "Frame_239130_p84wqlM.jpg",
+            "created_at": "2025-04-07T13:56:36.703Z",
+            "updated_at": "2025-04-07T13:56:36.703Z"
+        }
+    },
+    {
+        "model": "properties.propertymedia",
+        "pk": 2,
+        "fields": {
+            "property_id": 2,
+            "image": "Frame_239130_p85wqlM.jpg",
+            "created_at": "2025-04-07T13:56:36.703Z",
+            "updated_at": "2025-04-07T13:56:36.703Z"
+        }
+    },
+    {
+        "model": "properties.offer",
+        "pk": 1,
+        "fields": {
+            "created_date": "2025-04-07T09:27:56.860Z",
+            "updated_date": "2025-04-07T09:27:56.860Z",
+            "property_id": 1,
+            "amount": 4,
+            "bidder_id": "11111",
+            "description": "Offer1"
+        }
+    },
+    {
+        "model": "properties.offer",
+        "pk": 2,
+        "fields": {
+            "created_date": "2025-04-07T10:27:56.860Z",
+            "updated_date": "2025-04-07T10:27:56.860Z",
+            "property_id": 1,
+            "amount": 2,
+            "bidder_id": "11112",
+            "description": "Offer1 bidder 2"
+        }
+    },
+    {
+        "model": "properties.offer",
+        "pk": 3,
+        "fields": {
+            "created_date": "2025-04-07T11:27:56.860Z",
+            "updated_date": "2025-04-07T11:27:56.860Z",
+            "property_id": 1,
+            "amount": 3,
+            "bidder_id": "11113",
+            "description": "Offer1 bidder 3"
+        }
+    },
+    {
+        "model": "properties.offer",
+        "pk": 4,
+        "fields": {
+            "created_date": "2025-04-07T09:27:56.860Z",
+            "updated_date": "2025-04-07T09:27:56.860Z",
+            "property_id": 5,
+            "amount": 4,
+            "bidder_id": "11111",
+            "description": "Offer1"
+        }
+    },
+    {
+        "model": "properties.offer",
+        "pk": 5,
+        "fields": {
+            "created_date": "2025-04-07T10:27:56.860Z",
+            "updated_date": "2025-04-07T10:27:56.860Z",
+            "property_id": 2,
+            "amount": 8,
+            "bidder_id": "11112",
+            "description": "Offer1 bidder 2"
+        }
+    },
+    {
+        "model": "properties.comparable",
+        "pk": 1,
+        "fields": {
+            "created_date": "2025-04-07T11:25:42.940Z",
+            "updated_date": "2025-04-07T11:25:42.940Z",
+            "from_property": 1,
+            "to_property": 2
+        }
+    },
+    {
+        "model": "properties.disclosure",
+        "pk": 1,
+        "fields": {
+            "created_date": "2025-04-07T14:13:23.312Z",
+            "updated_date": "2025-04-07T14:13:23.313Z",
+            "property_id": 1,
+            "name": "disclosure1",
+            "description": "property1 disclosure",
+            "url": "http://disclosure"
+        }
+    }
+]

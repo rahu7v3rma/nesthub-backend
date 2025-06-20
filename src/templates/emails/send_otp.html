@@ -1,0 +1,26 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Your 2FA Token{% endblock %}
+
+{% block extra_head %}
+<style>
+    .token {
+        font-size: 24px;
+        font-weight: bold;
+        color: #007bff;
+        text-align: center;
+        letter-spacing: 2px;
+        padding: 10px 0;
+    }
+</style>
+{% endblock %}
+
+{% block email_content %}
+    <p class="message">
+        Here is your 2FA token to access your account securely:
+    </p>
+    <p class="token">{{ token }}</p>
+    <p class="message">
+        Please use this code within the next few minutes to complete your login.
+    </p>
+{% endblock %}

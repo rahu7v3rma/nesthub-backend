@@ -1,0 +1,5 @@
+Dear {{ name }},
+
+To complete your registration with the NH app, please click the link below to verify your email address:
+
+{{ verify_account_link }}

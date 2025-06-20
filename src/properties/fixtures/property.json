@@ -1,0 +1,82 @@
+[
+  {
+    "model": "properties.property",
+    "pk": 1,
+    "fields": {
+      "name": "property_1",
+      "address": "property_address_1",
+      "image": "Screenshot_2025-03-14_at_12.55.09AM.png",
+      "price": 1,
+      "no_of_beds": 1,
+      "no_of_baths": 1,
+      "square_feet_size": 1,
+      "additional_information": "property_additional_information_1",
+      "created_at": "2025-03-13T19:25:23.595Z",
+      "updated_at": "2025-03-13T19:25:23.595Z"
+    }
+  },
+  {
+    "model": "properties.property",
+    "pk": 2,
+    "fields": {
+      "name": "property_2",
+      "address": "property_address_2",
+      "image": "Screenshot_2025-03-14_at_12_4xTthfD.55.09AM.png",
+      "price": 2,
+      "no_of_beds": 2,
+      "no_of_baths": 2,
+      "square_feet_size": 2,
+      "additional_information": "property_additional_information_2",
+      "created_at": "2025-03-13T19:25:39.002Z",
+      "updated_at": "2025-03-13T19:25:39.002Z"
+    }
+  },
+  {
+    "model": "properties.property",
+    "pk": 3,
+    "fields": {
+      "name": "property_3",
+      "address": "property_address_3",
+      "image": "Screenshot_2025-03-14_at_12_jL4veah.55.09AM.png",
+      "price": 3,
+      "no_of_beds": 3,
+      "no_of_baths": 3,
+      "square_feet_size": 3,
+      "additional_information": "property_additional_information_3",
+      "created_at": "2025-03-13T19:25:54.036Z",
+      "updated_at": "2025-03-13T19:25:54.036Z"
+    }
+  },
+  {
+    "model": "properties.property",
+    "pk": 4,
+    "fields": {
+      "name": "property_4",
+      "address": "property_address_4",
+      "image": "Screenshot_2025-03-14_at_12_YttIMzO.55.09AM.png",
+      "price": 4,
+      "no_of_beds": 4,
+      "no_of_baths": 4,
+      "square_feet_size": 4,
+      "additional_information": "property_additional_information_4",
+      "created_at": "2025-03-13T19:26:08.367Z",
+      "updated_at": "2025-03-13T19:26:08.367Z"
+    }
+  },
+  {
+    "model": "properties.property",
+    "pk": 5,
+    "fields": {
+      "name": "property_5",
+      "address": "property_address_5",
+      "image": "Screenshot_2025-03-14_at_12_X21E1gR.55.09AM.png",
+      "price": 5,
+      "no_of_beds": 5,
+      "no_of_baths": 5,
+      "square_feet_size": 5,
+      "additional_information": "property_additional_information_5",
+      "created_at": "2025-03-13T19:26:22.352Z",
+      "updated_at": "2025-03-13T19:26:22.352Z"
+    }
+  }
+]

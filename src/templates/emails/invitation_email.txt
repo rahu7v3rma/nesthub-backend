@@ -1,0 +1,12 @@
+Hi,
+
+We are excited to invite you to complete the second part of your child's scholarship application. Your input is vital in ensuring a thorough review of your application.
+
+Please click the link below to access and complete the form: {{ survey_link }}
+
+If the link doesn't work, you can copy and paste the following URL into your browser: {{ survey_link }}
+
+Thank you for your time and participation!
+
+Best regards,
+NH Scholarship Team

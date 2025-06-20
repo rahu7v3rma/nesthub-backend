@@ -1,0 +1,8 @@
+Thank you for submitting your application. We have successfully received it and will begin processing your information shortly.
+
+{% for section_name, responses in survey_details.items %}
+{{ section_name }}
+{% for response in responses %}
+{{ response.question_text }}: {{ response.answer }}
+{% endfor %}
+{% endfor %}

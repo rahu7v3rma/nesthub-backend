@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Your Survey Responses</title>
+  </head>
+  <body>
+    <div>
+      <h3>
+        Thank you for submitting your application. We have successfully received it and will begin processing your information shortly.
+      </h3>
+      <div style="padding-left: 16px;">
+        {% for section_name, responses in survey_details.items %}
+            <table style="width: 75%">
+                <thead>
+                    <th
+                        colspan="2"
+                        style="text-align: left; background-color: #181e51; color: white; font-weight: bold; text-transform: capitalize; font-size: 16px"
+                    >{{ section_name }}</th>
+                </thead>
+                <tbody>
+                    {% for response in responses %}
+                        <tr>
+                            <td style="width: 50%; font-weight: bolder">{{ response.question_text }}</td>
+                            <td style="width: 50%">{{ response.answer }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <br>
+        {% endfor %}
+      </div>
+    </div>    
+ </body>
+<style>
+    table, th, td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        padding: 5px;
+    }
+</style>
+</html>
