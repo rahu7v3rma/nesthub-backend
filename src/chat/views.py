@@ -22,7 +22,14 @@ class ChatViewSet(viewsets.ModelViewSet):
         return Chat.objects.all()
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        chat = serializer.save(user=self.request.user)
+
+        # Set viewing state based on who created the message
+        if self.request.user.user_type == 'realtor':
+            chat.is_chat_viewed_by_client = False
+        else:
+            chat.is_chat_viewed_by_client = True
+        chat.save()
 
     @action(detail=False, methods=['get'])
     def property_messages(self, request):
@@ -40,6 +47,18 @@ class ChatViewSet(viewsets.ModelViewSet):
             messages = Chat.objects.filter(property_id=property_id).order_by(
                 '-timestamp'
             )[:20]
+
+            if request.user.user_type == 'realtor':
+                # If realtor is viewing, mark client messages as viewed
+                messages.filter(
+                    is_chat_viewed_by_client=True, user__user_type='user'
+                ).update(is_chat_viewed_by_client=None)
+            else:
+                # If client is viewing, mark realtor messages as viewed
+                messages.filter(
+                    is_chat_viewed_by_client=False, user__user_type='realtor'
+                ).update(is_chat_viewed_by_client=None)
+
             serializer = self.get_serializer(messages, many=True)
             return Response(serializer.data)
         except Exception as e:

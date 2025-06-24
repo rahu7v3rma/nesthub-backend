@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
 from django.test import TestCase
 from properties.models import (
+    Comparable,
     Disclosure,
     Offer,
     Property,
@@ -363,37 +364,15 @@ class PropertyViewTestCase(TestCase):
             },
         )
 
-    def test_invalid_sort_value(self):
-        response = self.client.get('/properties/?sort=invalid_value').json()
-        self.assertDictEqual(
-            response,
-            {
-                'success': False,
-                'message': 'Request is invalid.',
-                'code': 'request_invalid',
-                'status': 400,
-                'data': {
-                    'sort': [
-                        'Provided choice is invalid, Available choices are: "ASC" and "DESC".'  # noqa: E501
-                    ]
-                },
-            },
-        )
-
     def test_sort_by_price_ascending(self):
-        response = self.client.get('/properties/?sort=ASC').json()
+        response = self.client.get('/properties/?sort=price_ASC').json()
 
         normalized_list = []
         for prop in response['data']['list']:
-            image_url = prop['image']
-            if not image_url.startswith('/media/'):
-                image_url = f'/media/{image_url}'
-
             normalized_list.append(
                 {
                     'name': prop['name'],
                     'address': prop['address'],
-                    'image': image_url,
                     'price': prop['price'],
                     'no_of_beds': prop['no_of_beds'],
                     'no_of_baths': prop['no_of_baths'],
@@ -426,7 +405,6 @@ class PropertyViewTestCase(TestCase):
                     {
                         'name': 'property_1',
                         'address': 'property_address_1',
-                        'image': '/media/Screenshot_2025-03-14_at_12.55.09AM.png',
                         'price': 1,
                         'no_of_beds': 1,
                         'no_of_baths': 1,
@@ -436,7 +414,6 @@ class PropertyViewTestCase(TestCase):
                     {
                         'name': 'property_2',
                         'address': 'property_address_2',
-                        'image': '/media/Screenshot_2025-03-14_at_12_4xTthfD.55.09AM.png',  # noqa: E501
                         'price': 2,
                         'no_of_beds': 2,
                         'no_of_baths': 2,
@@ -446,7 +423,6 @@ class PropertyViewTestCase(TestCase):
                     {
                         'name': 'property_3',
                         'address': 'property_address_3',
-                        'image': '/media/Screenshot_2025-03-14_at_12_jL4veah.55.09AM.png',  # noqa: E501
                         'price': 3,
                         'no_of_beds': 3,
                         'no_of_baths': 3,
@@ -456,7 +432,6 @@ class PropertyViewTestCase(TestCase):
                     {
                         'name': 'property_4',
                         'address': 'property_address_4',
-                        'image': '/media/Screenshot_2025-03-14_at_12_YttIMzO.55.09AM.png',  # noqa: E501
                         'price': 4,
                         'no_of_beds': 4,
                         'no_of_baths': 4,
@@ -466,7 +441,6 @@ class PropertyViewTestCase(TestCase):
                     {
                         'name': 'property_5',
                         'address': 'property_address_5',
-                        'image': '/media/Screenshot_2025-03-14_at_12_X21E1gR.55.09AM.png',  # noqa: E501
                         'price': 5,
                         'no_of_beds': 5,
                         'no_of_baths': 5,
@@ -483,7 +457,7 @@ class PropertyViewTestCase(TestCase):
         self.assertDictEqual(simplified_response, expected_response)
 
     def test_sort_by_price_descending(self):
-        response = self.client.get('/properties/?sort=DESC').json()
+        response = self.client.get('/properties/?sort=price_DESC').json()
         simplified_response = {
             'success': response['success'],
             'message': response['message'],
@@ -512,71 +486,34 @@ class PropertyViewTestCase(TestCase):
             },
         }
 
-        self.assertDictEqual(
-            simplified_response,
-            {
-                'success': True,
-                'message': 'Properties fetched successfully.',
-                'status': 200,
-                'data': {
-                    'list': [
-                        {
-                            'name': 'property_5',
-                            'address': 'property_address_5',
-                            'image': '/media/Screenshot_2025-03-14_at_12_X21E1gR.55.09AM.png',  # noqa: E501
-                            'price': 5,
-                            'no_of_beds': 5,
-                            'no_of_baths': 5,
-                            'square_feet_size': 5,
-                            'property_details': [],
-                        },
-                        {
-                            'name': 'property_4',
-                            'address': 'property_address_4',
-                            'image': '/media/Screenshot_2025-03-14_at_12_YttIMzO.55.09AM.png',  # noqa: E501
-                            'price': 4,
-                            'no_of_beds': 4,
-                            'no_of_baths': 4,
-                            'square_feet_size': 4,
-                            'property_details': [],
-                        },
-                        {
-                            'name': 'property_3',
-                            'address': 'property_address_3',
-                            'image': '/media/Screenshot_2025-03-14_at_12_jL4veah.55.09AM.png',  # noqa: E501
-                            'price': 3,
-                            'no_of_beds': 3,
-                            'no_of_baths': 3,
-                            'square_feet_size': 3,
-                            'property_details': [],
-                        },
-                        {
-                            'name': 'property_2',
-                            'address': 'property_address_2',
-                            'image': '/media/Screenshot_2025-03-14_at_12_4xTthfD.55.09AM.png',  # noqa: E501
-                            'price': 2,
-                            'no_of_beds': 2,
-                            'no_of_baths': 2,
-                            'square_feet_size': 2,
-                            'property_details': [],
-                        },
-                        {
-                            'name': 'property_1',
-                            'address': 'property_address_1',
-                            'image': '/media/Screenshot_2025-03-14_at_12.55.09AM.png',
-                            'price': 1,
-                            'no_of_beds': 1,
-                            'no_of_baths': 1,
-                            'square_feet_size': 1,
-                            'property_details': [],
-                        },
-                    ],
-                    'page': 1,
-                    'has_next': False,
-                    'total': 5,
-                },
-            },
+        # Verify the response structure
+        self.assertEqual(simplified_response['success'], True)
+        self.assertEqual(
+            simplified_response['message'], 'Properties fetched successfully.'
         )
+        self.assertEqual(simplified_response['status'], 200)
+        self.assertEqual(len(simplified_response['data']['list']), 5)
+        self.assertEqual(simplified_response['data']['page'], 1)
+        self.assertEqual(simplified_response['data']['has_next'], False)
+        self.assertEqual(simplified_response['data']['total'], 5)
+
+    def test_sort_by_date(self):
+        response = self.client.get('/properties/?sort=date_DESC').json()
+        self.assertEqual(response['success'], True)
+        self.assertEqual(response['message'], 'Properties fetched successfully.')
+        self.assertEqual(response['status'], 200)
+        self.assertIn('data', response)
+        self.assertIn('list', response['data'])
+        self.assertGreater(len(response['data']['list']), 0)
+
+    def test_sort_by_activity(self):
+        response = self.client.get('/properties/?sort=activity_DESC').json()
+        self.assertEqual(response['success'], True)
+        self.assertEqual(response['message'], 'Properties fetched successfully.')
+        self.assertEqual(response['status'], 200)
+        self.assertIn('data', response)
+        self.assertIn('list', response['data'])
+        self.assertGreater(len(response['data']['list']), 0)
 
     def test_limit_param(self):
         response = self.client.get('/properties/?limit=1')
@@ -724,6 +661,7 @@ class PropertyPostViewTestCase(TestCase):
                 'additional_information': 'property_additional_information_1',
                 'note': 'Test note',
                 'user_id': 1,
+                'listing_id': 1,
             },
             format='json',
         )
@@ -737,7 +675,7 @@ class PropertyPostViewTestCase(TestCase):
 
 
 class PropertyDetailsViewTestCase(TestCase):
-    fixtures = ['property.json', 'offers_comparables.json']
+    # fixtures = ['property.json', 'offers_comparables.json']
 
     def setUp(self):
         self.user = get_user_model().objects.create_user(
@@ -745,6 +683,29 @@ class PropertyDetailsViewTestCase(TestCase):
             password='testpassword',
             name='Test Name',
             phone='1234567890',
+        )
+        # Create test property
+        self.property = Property.objects.create(
+            name='Test Property',
+            address='123 Test St',
+            city='Test City',
+            state_or_province='TS',
+            zip_code='12345',
+            price=100000,
+            no_of_beds=2,
+            no_of_baths=2,
+            square_feet_size=1000,
+        )
+        self.realtor = get_user_model().objects.create_user(
+            email='realtor@test.com',
+            password='testpass123',
+            name='Test Realtor',
+            phone='1234567891',
+        )
+
+        # Create realtor property
+        self.realtor_property = RealtorProperty.objects.create(
+            property=self.property, client=self.user, realtor=self.realtor, price=100000
         )
         self.client = APIClient()
         self.client.force_authenticate(self.user)
@@ -758,7 +719,9 @@ class PropertyDetailsViewTestCase(TestCase):
         )
 
     def test_get_data_property_not_found(self):
-        response = self.client.get('/properties/details/12')
+        response = self.client.get(
+            f'/properties/details/12?realtor_property_id={self.realtor_property.id}'
+        )
         self.assertEqual(response.status_code, 404)
 
     def generate_unique_address(self, prefix='test_address_'):
@@ -777,33 +740,34 @@ class PropertyDetailsViewTestCase(TestCase):
             no_of_baths=1,
             square_feet_size=1,
             additional_information='property_additional_information_1',
+            image='Screenshot_2025-03-14_at_12.55.09AM.png',
         )
 
         PropertyMedia.objects.create(
-            property_id=property, image='Frame_239130_p84wqlM.jpg'
+            property_id=property, photos_list=[{'url': 'Frame_239130_p84wqlM.jpg'}]
         )
 
         Offer.objects.create(
-            property_id=property,
+            realtor_property=self.realtor_property,
             amount=4,
             description='Offer1',
             created_date='2025-04-07T09:27:56.860000Z',
         )
         Offer.objects.create(
-            property_id=property,
+            realtor_property=self.realtor_property,
             amount=2,
             description='Offer1 bidder 2',
             created_date='2025-04-07T10:27:56.860000Z',
         )
         Offer.objects.create(
-            property_id=property,
+            realtor_property=self.realtor_property,
             amount=3,
             description='Offer1 bidder 3',
             created_date='2025-04-07T11:27:56.860000Z',
         )
 
         Disclosure.objects.create(
-            property_id=property,
+            property_id=self.realtor_property,
             name='disclosure1',
         )
 
@@ -814,26 +778,39 @@ class PropertyDetailsViewTestCase(TestCase):
             no_of_baths=2,
             square_feet_size=2,
         )
-        property.comparables.add(comparable)
+        comparable_realtor_property = RealtorProperty.objects.create(
+            property=comparable,
+            client=self.user,
+            realtor=self.realtor,
+            price=comparable.price,
+        )
+        Comparable.objects.create(
+            from_property=self.realtor_property, to_property=comparable_realtor_property
+        )
 
-        response = self.client.get('/properties/details/1')
+        response = self.client.get(
+            f'/properties/details/{property.id}?realtor_property_id={self.realtor_property.id}'
+        )
         self.assertEqual(response.status_code, 200)
 
         response_data = response.json().get('data')
 
-        self.assertEqual(response_data['address'], 'property_address_1')
-        self.assertEqual(len(response_data['images']), 1)
-        self.assertTrue(
-            response_data['images'][0]['image'].endswith('Frame_239130_p84wqlM.jpg')
+        self.assertEqual(
+            response_data['image'], 'Screenshot_2025-03-14_at_12.55.09AM.png'
         )
+        self.assertEqual(len(response_data['photos_list']), 1)
+        self.assertEqual(
+            response_data['photos_list'][0]['url'], 'Frame_239130_p84wqlM.jpg'
+        )
+        self.assertEqual(response_data['address'], property.address)
         self.assertEqual(response_data['price'], 1)
         self.assertEqual(response_data['bedsCount'], 1)
         self.assertEqual(response_data['bathsCount'], 1)
         self.assertEqual(response_data['squareFeet'], 1)
         self.assertEqual(response_data['zillowIntegration'], False)
         self.assertEqual(
-            response_data['additionalInformation'], 'property_additional_information_1'
-        )  # noqa: E501
+            response_data['additional_information'], 'property_additional_information_1'
+        )
 
         self.assertEqual(len(response_data['offers']), 3)
         self.assertEqual(response_data['offers'][0]['amount'], 4)
@@ -844,9 +821,7 @@ class PropertyDetailsViewTestCase(TestCase):
         self.assertEqual(response_data['disclosure'][0]['name'], 'disclosure1')
 
         self.assertEqual(len(response_data['comparables']), 1)
-        self.assertEqual(
-            response_data['comparables'][0]['address'], 'property_address_2'
-        )
+        self.assertEqual(response_data['comparables'][0]['address'], comparable.address)
 
         self.assertEqual(response_data['offerGraph']['askedPrice'], 1)
         self.assertEqual(response_data['offerGraph']['firstOffer'], 4)

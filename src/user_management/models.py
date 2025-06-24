@@ -42,7 +42,7 @@ class CustomUser(AbstractBaseUser):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
     license_id = models.CharField(max_length=255, blank=True, null=True)
-    phone = models.CharField(max_length=15)
+    phone = models.CharField(max_length=15, blank=True, null=True)
     company = models.CharField(max_length=255, blank=True, null=True)
     email = models.EmailField(unique=True)
     user_type = models.CharField(
@@ -50,7 +50,9 @@ class CustomUser(AbstractBaseUser):
     )
     address = models.TextField(blank=True, null=True)
     password = models.CharField(max_length=128)
+    region = models.CharField(max_length=128, default=None, null=True)
     timestamp = models.DateTimeField(auto_now_add=True)
+    last_activity = models.DateTimeField(default=None, null=True)
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -58,6 +60,10 @@ class CustomUser(AbstractBaseUser):
     is_superuser = models.BooleanField(default=False)
     otp_exempt = models.BooleanField(default=False)
     is_email_verified = models.BooleanField(default=False)
+    profile_pic = models.ImageField(
+        upload_to='profile_pictures/', null=True, blank=True
+    )
+
     objects = CustomUserManager()
 
     USERNAME_FIELD = 'email'

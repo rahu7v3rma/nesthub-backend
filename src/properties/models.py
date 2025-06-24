@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 
 from lib.models import BaseModel
@@ -6,7 +8,8 @@ from user_management.models import CustomUser
 
 class Property(models.Model):
     name = models.CharField(max_length=255, null=True, blank=True, default=None)
-    address = models.TextField(null=True, blank=True, default=None, unique=True)
+    address = models.TextField(null=True, blank=True, default=None)
+    listing_id = models.IntegerField(null=True, blank=True, default=None)
     city = models.CharField(max_length=255, null=True, blank=True, default=None)
     county_or_parish = models.CharField(
         max_length=255, null=True, blank=True, default=None
@@ -22,10 +25,12 @@ class Property(models.Model):
     square_feet_size = models.PositiveIntegerField(blank=True, null=True, default=None)
     additional_information = models.TextField(blank=True, null=True, default=None)
     tag = models.CharField(max_length=255, null=True, blank=True, default=None)
-    comparables = models.ManyToManyField('self', through='Comparable')
     open_house_time = models.DateTimeField(null=True)
     deadline_datetime = models.DateTimeField(null=True, blank=True, default=None)
     is_deadline_checked = models.BooleanField(default=False)
+    is_property_viewed_by_client = models.BooleanField(
+        null=True, blank=True, default=False
+    )
     note = models.TextField(blank=True, null=True, default=None)
     redfin_url = models.TextField(blank=True, null=True, default=None)
     zillow_url = models.TextField(blank=True, null=True, default=None)
@@ -56,8 +61,10 @@ class PropertyDetail(models.Model):
 
 
 class PropertyMedia(models.Model):
-    property_id = models.ForeignKey(Property, on_delete=models.CASCADE)
-    image = models.ImageField(blank=True, null=True, default=None)
+    property_id = models.ForeignKey(
+        Property, on_delete=models.CASCADE, related_name='property_media'
+    )
+    photos_list = models.JSONField(blank=True, null=True, default=list)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -66,6 +73,8 @@ class PropertyMedia(models.Model):
 
 
 class RealtorProperty(models.Model):
+    comparables = models.ManyToManyField('self', through='Comparable')
+    is_added_for_comparable = models.BooleanField(default=False)
     property = models.ForeignKey(
         Property, on_delete=models.CASCADE, related_name='realtor_properties'
     )
@@ -76,6 +85,8 @@ class RealtorProperty(models.Model):
         CustomUser, on_delete=models.CASCADE, related_name='realtor_realtor_properties'
     )
     price = models.PositiveIntegerField(null=True, blank=True)
+    property_rating = models.FloatField(null=True, blank=True)
+    is_property_toured = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -83,6 +94,7 @@ class RealtorProperty(models.Model):
 
 
 class ClientProperty(models.Model):
+    is_added_for_comparable = models.BooleanField(default=False)
     realtor_property = models.ForeignKey(
         RealtorProperty, on_delete=models.CASCADE, related_name='realtor_properties'
     )
@@ -101,30 +113,56 @@ class Offer(BaseModel):
     )
     amount = models.PositiveIntegerField()
     bidder_id = models.CharField(max_length=20)
-    description = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = 'offers'
+    description = models.TextField(null=True, blank=True)
+    contingencies_info = models.JSONField(null=True, blank=True)
+    offer_date = models.DateField(null=True, blank=True)
 
 
 class Disclosure(BaseModel):
     property_id = models.ForeignKey(
-        Property, on_delete=models.CASCADE, related_name='property_disclosures'
+        RealtorProperty, on_delete=models.CASCADE, related_name='property_disclosures'
     )
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, null=True, blank=True)
     description = models.TextField(null=True)
-    url = models.CharField(max_length=255, null=True)
+    url = models.TextField(null=True)
+
+
+class DisclosureFile(models.Model):
+    disclosure = models.ForeignKey(
+        Disclosure, on_delete=models.CASCADE, related_name='files'
+    )
+    file = models.FileField(upload_to='disclosures/')
+
+    @staticmethod
+    def random_image_name(instance, filename):
+        ext = filename.split('.')[-1]
+        # Generate a unique filename using uuid
+        new_filename = f'{uuid.uuid4().hex}.{ext}'
+        return new_filename
+
+    def save(self, *args, **kwargs):
+        # If the file is being uploaded, change the filename
+        if self.file:
+            self.file.name = self.random_image_name(self, self.file.name)
+        super().save(*args, **kwargs)
 
 
 class Comparable(BaseModel):
     from_property = models.ForeignKey(
-        Property, on_delete=models.CASCADE, related_name='from_property_comparables'
+        RealtorProperty,
+        on_delete=models.CASCADE,
+        related_name='from_property_comparables',
     )
     to_property = models.ForeignKey(
-        Property, on_delete=models.CASCADE, related_name='to_property_comparables'
+        RealtorProperty,
+        on_delete=models.CASCADE,
+        related_name='to_property_comparables',
+        null=True,
+        blank=True,
     )
+    url = models.CharField(max_length=255, null=True)
+    additional_info = models.JSONField(null=True, blank=True)
+    is_link_only = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('from_property', 'to_property')

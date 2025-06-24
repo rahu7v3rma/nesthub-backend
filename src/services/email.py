@@ -112,3 +112,26 @@ def send_verify_account_email(email: str, name: str, verify_account_link: str):
         html_email_template='emails/verify_account.html',
     )
     return res
+
+
+def send_invitation_email_buyer(
+    email: str,
+    set_password_link: str,
+    buyers_first_name: str,
+    realtors_name: str,
+    realtors_contact_info: str,
+):
+    context = {
+        'set_password_link': set_password_link,
+        'buyers_first_name': buyers_first_name,
+        'realtors_name': realtors_name,
+        'realtors_contact_info': realtors_contact_info,
+    }
+    res = send_mail(
+        [email],
+        'Your Personalized Home Search Dashboard Is Ready 🎉',
+        context=context,
+        plaintext_email_template='emails/invitation_email.txt',
+        html_email_template='emails/invitation_email.html',
+    )
+    return res

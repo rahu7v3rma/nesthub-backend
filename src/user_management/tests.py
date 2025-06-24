@@ -79,7 +79,7 @@ class LoginTestCase(TestCase):
         json_string = response.content.decode(encoding='UTF-8')
         user_data = json.loads(json_string)
         self.assertEqual(response.status_code, 401)
-        self.assertEqual(user_data['message'], 'Bad credentials.')
+        self.assertEqual(user_data['message'], 'Invalid credentials.')
 
     def test_logout_authentication_with_success(self):
         client = APIClient()
@@ -220,6 +220,7 @@ class SignUpTestCase(TestCase):
                 'email': 'test@mmemail.com',
                 'password': 'Ab1234@1234',
                 'user_type': 'user',
+                'region': 'Contra Costa',
             },
             format='json',
         )
@@ -239,6 +240,7 @@ class SignUpTestCase(TestCase):
                 'email': 'test@mmemail.com',
                 'password': 'Ab1234',
                 'user_type': 'user',
+                'region': 'Contra Costa',
             },
             format='json',
         )
@@ -266,6 +268,7 @@ class SignUpTestCase(TestCase):
                 'email': 'valid@email.com',
                 'password': 'Ab1234@1234',
                 'user_type': 'user',
+                'region': 'Contra Costa',
             },
             format='json',
         )
@@ -290,6 +293,7 @@ class SignUpTestCase(TestCase):
                 'email': 'valid@email.com',
                 'password': 'Ab1234@1234',
                 'user_type': 'user',
+                'region': 'Contra Costa',
             },
             format='json',
             HTTP_X_FORWARDED_FOR='HTTP_X_FORWARDED_FOR',
@@ -364,14 +368,17 @@ class ChangePasswordTestCase(TestCase):
             '/user/change-password',
             format='json',
             data={
-                'new_password': TEST_USER_NEW_PASSWORD,
-                'old_password': TEST_USER_WRONG_PASSWORD,
+                'current_password': TEST_USER_WRONG_PASSWORD,
+                'new_password': 'TestNewPass123!',
+                'confirm_password': 'TestNewPass123!',
             },
         )
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 400)
         json_string = response.content.decode(encoding='UTF-8')
         response_data = json.loads(json_string)
-        self.assertEqual(response_data['message'], 'Bad credentials.')
+        self.assertEqual(response_data['message'], 'Current password is incorrect.')
+        self.assertEqual(response_data['code'], 'invalid_password')
+        self.assertEqual(response_data['status'], 400)
 
     def test_change_password(self):
         self.assertTrue(self.user.check_password(TEST_USER_PASSWORD))
@@ -405,29 +412,25 @@ class ChangePasswordTestCase(TestCase):
         else:
             client.credentials(HTTP_X_AUTHORIZATION='Token ' + token_value)
 
+        new_password = 'TestNewPass123!'
         response = client.post(
             '/user/change-password',
             format='json',
             data={
-                'new_password': TEST_USER_NEW_PASSWORD,
-                'old_password': TEST_USER_PASSWORD,
+                'current_password': TEST_USER_PASSWORD,
+                'new_password': new_password,
+                'confirm_password': new_password,
             },
         )
 
         self.assertEqual(response.status_code, 200)
         json_string = response.content.decode(encoding='UTF-8')
         response_data = json.loads(json_string)
-        self.assertEqual(response_data['message'], 'Password changed successfully.')
+        self.assertEqual(response_data['message'], 'Password updated successfully.')
 
         self.user.refresh_from_db()
         self.assertFalse(self.user.check_password(TEST_USER_PASSWORD))
-        self.assertTrue(self.user.check_password(TEST_USER_NEW_PASSWORD))
-        new_token = None
-        if 'data' in response_data and 'new_token' in response_data['data']:
-            new_token = response_data['data']['new_token']
-        if new_token is not None:
-            token = self.user.custom_auth_tokens.order_by('-created').first()
-            self.assertEqual(new_token, token.key)
+        self.assertTrue(self.user.check_password(new_password))
 
 
 class ClientViewTestCase(TestCase):

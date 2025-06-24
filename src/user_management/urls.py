@@ -84,4 +84,16 @@ urlpatterns = [
         views.ClientDetailsView.as_view(),
         name='client_detail',
     ),
+    path(
+        'members',
+        views.ClientMembersView.as_view(),
+        name='client_members',
+    ),
+    path(
+        'members/<int:member_id>',
+        views.ClientMembersView.as_view(),
+        name='client_member',
+    ),
+    path('profile', views.GetUserProfile.as_view(), name='profile'),
+    path('update-profile', views.UpdateUserProfile.as_view(), name='update-profile'),
 ]

@@ -21,5 +21,13 @@ class ChatSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Chat
-        fields = ['id', 'user', 'property', 'message', 'timestamp', 'user_details']
+        fields = [
+            'id',
+            'user',
+            'property',
+            'message',
+            'is_chat_viewed_by_client',
+            'timestamp',
+            'user_details',
+        ]
         read_only_fields = ['user', 'timestamp']

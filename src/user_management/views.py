@@ -13,8 +13,10 @@ from django.db import transaction
 from django.db.models import Q
 from django.db.utils import IntegrityError
 from django.template.response import TemplateResponse
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from rest_framework import status
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -22,8 +24,8 @@ from rest_framework.views import APIView
 from lib.constants import CODE_NOT_FOUND, MESSAGE_NOT_FOUND
 from lib.responses import get_response, redirect
 from services.email import (
+    send_invitation_email_buyer,
     send_reset_password_email,
-    send_set_password_email,
     send_verify_account_email,
 )
 from user_management.decorators import verify_path_client
@@ -37,7 +39,6 @@ from user_management.models import (
     VerifyAccountToken,
 )
 from user_management.serializers import (
-    ChangePasswordSerializer,
     ClientDetailSerializer,
     ClientGetSerializer,
     ClientPostRequestSerializer,
@@ -49,12 +50,15 @@ from user_management.serializers import (
     ResetPasswordVerifySerializer,
     SignUpSerializer,
     UnverifiedTokenSerializer,
+    UpdatePasswordSerializer,
     UserSerializer,
     VerifyAccountSerializer,
 )
 from user_management.utils import (
     InnerIsAuthenticated,
+    IsAuthenticated,
     IsAuthenticatedAndNotVerified,
+    IsClient,
     IsRealtor,
     hash_user_id,
 )
@@ -104,7 +108,7 @@ class UserLoginView(APIView):
             return Response(
                 {
                     'success': False,
-                    'message': 'Bad credentials.',
+                    'message': 'Invalid credentials.',
                     'code': 'bad_credentials',
                     'status': status.HTTP_401_UNAUTHORIZED,
                     'data': {},
@@ -122,7 +126,7 @@ class UserLoginView(APIView):
             return Response(
                 {
                     'success': False,
-                    'message': 'Bad credentials.',
+                    'message': 'Invalid credentials.',
                     'code': 'bad_credentials',
                     'status': status.HTTP_401_UNAUTHORIZED,
                     'data': {},
@@ -160,16 +164,31 @@ class UserLoginView(APIView):
 
             # respond with user data and token
             response_serializer = UserSerializer(user)
+            response_data = response_serializer.data.copy()
+            if user.user_type == 'user':
+                realtor_client = RealtorClient.objects.filter(
+                    client_id=user.id,
+                ).first()
+
+                if realtor_client:
+                    realtor = realtor_client.realtor
+                    response_data['agent'] = {
+                        'id': realtor.id,
+                        'name': realtor.name,
+                        'license_id': realtor.license_id,
+                    }
 
             response_data_exempt = {'exempt': True} if user.otp_exempt else {}
             token = {'token': token.key}
+            user.last_activity = timezone.now()
+            user.save()
             return Response(
                 {
                     'success': True,
                     'message': 'User logged in successfully.',
                     'status': status.HTTP_200_OK,
                     'data': {
-                        **response_serializer.data,
+                        **response_data,
                         **response_data_exempt,
                         **token,
                     },
@@ -299,7 +318,7 @@ class SignInView(APIView):
             return Response(
                 {
                     'success': False,
-                    'message': 'Bad credentials.',
+                    'message': 'Invalid credentials.',
                     'code': 'bad_credentials',
                     'status': status.HTTP_401_UNAUTHORIZED,
                     'data': {},
@@ -315,7 +334,7 @@ class SignInView(APIView):
             return Response(
                 {
                     'success': False,
-                    'message': 'Bad credentials.',
+                    'message': 'Invalid credentials.',
                     'code': 'bad_credentials',
                     'status': status.HTTP_401_UNAUTHORIZED,
                     'data': {},
@@ -410,13 +429,12 @@ class ResetPasswordRequestView(APIView):
             )
             return Response(
                 {
-                    'success': False,
-                    'message': 'Bad credentials.',
-                    'code': 'bad_credentials',
-                    'status': status.HTTP_401_UNAUTHORIZED,
+                    'success': True,
+                    'message': 'Reset password token requested successfully.',
+                    'status': status.HTTP_200_OK,
                     'data': {},
                 },
-                status=status.HTTP_401_UNAUTHORIZED,
+                status=status.HTTP_200_OK,
             )
         else:
             # generate a new token and save it
@@ -572,6 +590,7 @@ class ResetPasswordConfirmView(APIView):
                     )
 
                 reset_password_token.user.set_password(request_password)
+                reset_password_token.user.last_activity = timezone.now()
                 reset_password_token.user.save()
 
                 # delete used token
@@ -614,100 +633,56 @@ class ResetPasswordConfirmView(APIView):
 
 class ChangePasswordView(APIView):
     """
-    Change user password
+    Update password for logged-in user
     """
 
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
-        request_serializer = ChangePasswordSerializer(data=request.data)
-        if not request_serializer.is_valid():
+        serializer = UpdatePasswordSerializer(data=request.data)
+
+        if not serializer.is_valid():
             return Response(
                 {
                     'success': False,
-                    'message': 'Request is invalid.',
-                    'code': 'request_invalid',
+                    'message': 'Invalid request data.',
+                    'code': 'invalid_request',
                     'status': status.HTTP_400_BAD_REQUEST,
-                    'data': request_serializer.errors,
+                    'data': serializer.errors,
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        request_new_password = request_serializer.validated_data['new_password']
-        request_old_password = request_serializer.validated_data['old_password']
+        user = request.user
+        current_password = serializer.validated_data['current_password']
+        new_password = serializer.validated_data['new_password']
 
-        # find user by authentication token
-        try:
-            user = request.user
-            if not user or not hasattr(user, 'custom_auth_tokens'):
-                raise CustomUser.DoesNotExist()
-        except CustomUser.DoesNotExist:
-            logger.info(
-                'change password attempt for unknown user or token',
-            )
+        # Check if current password is correct
+        if not user.check_password(current_password):
             return Response(
                 {
                     'success': False,
-                    'message': 'Bad credentials.',
-                    'code': 'bad_credentials',
-                    'status': status.HTTP_401_UNAUTHORIZED,
-                    'data': {},
-                },
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-
-        # validate user password
-        if not user.check_password(request_old_password):
-            logger.info(
-                'change password attempt with bad password for user: %s',
-                user.email,
-            )
-            return Response(
-                {
-                    'success': False,
-                    'message': 'Bad credentials.',
-                    'code': 'bad_credentials',
-                    'status': status.HTTP_401_UNAUTHORIZED,
-                    'data': {},
-                },
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-
-        # validate password
-        try:
-            validate_password(
-                request_new_password,
-                user=user,
-                password_validators=get_password_validators(
-                    settings.AUTH_PASSWORD_VALIDATORS
-                ),
-            )
-        except ValidationError as ex:
-            return Response(
-                {
-                    'success': False,
-                    'message': 'Request is invalid.',
-                    'code': 'password_does_not_conform',
+                    'message': 'Current password is incorrect.',
+                    'code': 'invalid_password',
                     'status': status.HTTP_400_BAD_REQUEST,
-                    'data': {
-                        'password': ex.messages,
-                    },
+                    'data': {},
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        user.set_password(request_new_password)
+        # Update password
+        user.set_password(new_password)
         user.save()
 
-        # create new token and delete the existing token
-        # to close all existing sessions
-        Token.objects.filter(user=user).all().delete()
-        new_token = Token.objects.create(user=user)
+        # Delete all existing tokens for this user
+        Token.objects.filter(user=user).delete()
 
         return Response(
             {
                 'success': True,
-                'message': 'Password changed successfully.',
+                'message': 'Password updated successfully.',
                 'status': status.HTTP_200_OK,
-                'data': {'new_token': new_token.key},
+                'data': {},
             },
             status=status.HTTP_200_OK,
         )
@@ -1108,7 +1083,9 @@ class ClientView(APIView):
         data = request.data
 
         parent_update_data = {
-            k: v for k, v in data.items() if k in ['name', 'email', 'phone']
+            k: v
+            for k, v in data.items()
+            if k in ['name', 'email', 'phone', 'is_active']
         }
         members_data = data.get('members', [])
 
@@ -1374,6 +1351,10 @@ class ClientView(APIView):
             )
         ).order_by('id')
 
+        clients = clients.exclude(
+            id__in=ClientFamily.objects.values_list('member_id', flat=True)
+        )
+
         if request_search:
             clients = clients.filter(
                 Q(name__icontains=request_search) | Q(email__icontains=request_search)
@@ -1415,11 +1396,78 @@ class ClientView(APIView):
             set_password_token.token
         )
 
-        # Send email
-        email_sent = send_set_password_email(
-            email=user.email, set_password_link=set_password_link
+        # Compose realtor contact info
+        realtor_contact_info = realtor.email
+        if getattr(realtor, 'phone', None):
+            realtor_contact_info += f' | {realtor.phone}'
+
+        # Send invitation email to buyer (member)
+        email_sent = send_invitation_email_buyer(
+            email=user.email,
+            set_password_link=set_password_link,
+            buyers_first_name=user.name,
+            realtors_name=realtor.name,
+            realtors_contact_info=realtor_contact_info,
         )
         return email_sent
+
+
+class GetUserProfile(APIView):
+    def get(self, request):
+        user = request.user
+        if not user:
+            return Response(
+                {
+                    'success': False,
+                    'message': 'Invalid token',
+                    'code': 'unauthorized',
+                    'status': status.HTTP_401_UNAUTHORIZED,
+                    'data': {},
+                },
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        user_serializer = UserSerializer(user)
+
+        return Response(
+            {
+                'success': True,
+                'message': 'Profile fetched successfully.',
+                'status': status.HTTP_200_OK,
+                'data': user_serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class UpdateUserProfile(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+
+    def put(self, request):
+        user = request.user
+        data = request.data
+
+        serializer = UserSerializer(user, data=data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {
+                    'success': True,
+                    'message': 'Profile updated successfully.',
+                    'status': status.HTTP_200_OK,
+                    'data': serializer.data,
+                },
+                status=status.HTTP_200_OK,
+            )
+        return Response(
+            {
+                'success': False,
+                'message': 'Request is invalid.',
+                'code': 'request_invalid',
+                'status': status.HTTP_400_BAD_REQUEST,
+                'data': serializer.errors,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 
 class ClientDetailsView(APIView):
@@ -1453,6 +1501,261 @@ class ClientDetailsView(APIView):
                 'message': 'Client details fetched successfully.',
                 'status': status.HTTP_200_OK,
                 'data': data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class ClientMembersView(APIView):
+    permission_classes = [IsClient]
+
+    def generate_token_and_send_email(self, user: CustomUser, realtor: CustomUser):
+        # Generate token and save it
+        set_password_token = SetPasswordToken(user=user, realtor=realtor)
+        set_password_token.save()
+
+        set_password_link = settings.BASE_SET_PASSWORD_URL.format(
+            set_password_token.token
+        )
+
+        # Compose realtor contact info
+        realtor_contact_info = realtor.email
+        if getattr(realtor, 'phone', None):
+            realtor_contact_info += f' | {realtor.phone}'
+
+        # Send invitation email to buyer (member)
+        email_sent = send_invitation_email_buyer(
+            email=user.email,
+            set_password_link=set_password_link,
+            buyers_first_name=user.name,
+            realtors_name=realtor.name,
+            realtors_contact_info=realtor_contact_info,
+        )
+        return email_sent
+
+    def get(self, request):
+        data = ClientDetailSerializer(request.user).data
+
+        return Response(
+            {
+                'success': True,
+                'message': 'Client members fetched successfully.',
+                'status': status.HTTP_200_OK,
+                'data': data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def put(self, request):
+        parent_client = request.user
+        realtor_client = RealtorClient.objects.filter(client=parent_client).first()
+        request_realtor = realtor_client.realtor
+        data = request.data
+
+        members_data = data.get('members', [])
+
+        members_to_update = []  # Store tuples of (instance, validated_data)
+        members_to_create = []  # Store validated_data for new members
+        all_emails_in_request = set()
+        all_phones_in_request = set()
+
+        member_validation_errors = {}
+        for i, member_data in enumerate(members_data):
+            member_id = member_data.get('id')
+            member_email = member_data.get('email')
+            member_phone = member_data.get('phone')
+
+            if member_email:
+                if member_email in all_emails_in_request:
+                    member_validation_errors[f'member_{i}_email'] = (
+                        f"Email '{member_email}' is duplicated within the request."
+                    )
+                    continue
+                all_emails_in_request.add(member_email)
+
+            if member_phone:
+                if member_phone in all_phones_in_request:
+                    member_validation_errors[f'member_{i}_phone'] = (
+                        f"Phone '{member_phone}' is duplicated within the request."
+                    )
+                    continue
+                all_phones_in_request.add(member_phone)
+
+            if member_id:
+                # --- UPDATE existing member ---
+                try:
+                    member_instance = CustomUser.objects.get(
+                        pk=member_id,
+                        user_type=CustomUser.USER_TYPE_CHOICES[0][0],  # 'user'
+                        client_parent__parent=parent_client,
+                    )
+
+                    member_serializer = ClientPutRequestSerializer(
+                        instance=member_instance,
+                        data=member_data,
+                        context={'request_client': member_instance},
+                        partial=True,
+                    )
+                    if member_serializer.is_valid():
+                        members_to_update.append(
+                            (member_instance, member_serializer.validated_data)
+                        )
+                        # Add new email/phone to sets if they are changing
+                        if 'email' in member_serializer.validated_data:
+                            all_emails_in_request.add(
+                                member_serializer.validated_data['email']
+                            )
+                        if 'phone' in member_serializer.validated_data:
+                            all_phones_in_request.add(
+                                member_serializer.validated_data['phone']
+                            )
+                    else:
+                        member_validation_errors[f'member_{i}'] = (
+                            member_serializer.errors
+                        )
+
+                except CustomUser.DoesNotExist:
+                    member_validation_errors[
+                        f'member_{i}'
+                    ] = f'Member with ID {member_id} not found or \
+                              does not belong to this client.'
+                except (
+                    ClientFamily.DoesNotExist
+                ):  # Should be caught by the filter above, but explicit check is fine
+                    member_validation_errors[
+                        f'member_{i}'
+                    ] = f'Member with ID {member_id} is not \
+                              associated with parent client {parent_client.id}.'
+
+            else:
+                # --- CREATE new member ---
+                member_serializer = ClientPostRequestSerializer(data=member_data)
+                if member_serializer.is_valid():
+                    members_to_create.append(member_serializer.validated_data)
+                else:
+                    member_validation_errors[f'member_{i}'] = member_serializer.errors
+
+        if member_validation_errors:
+            return Response(
+                {
+                    'success': False,
+                    'message': 'Member data is invalid.',
+                    'code': 'request_invalid',
+                    'status': status.HTTP_400_BAD_REQUEST,
+                    'data': {'member_errors': member_validation_errors},
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        created_member_instances = []
+        try:
+            with transaction.atomic():
+                # 2. Update Existing Members
+                for instance, data_to_update in members_to_update:
+                    update_fields = []
+                    for attr, value in data_to_update.items():
+                        setattr(instance, attr, value)
+                        update_fields.append(attr)
+                    if update_fields:  # Only save if there are changes
+                        instance.save(update_fields=update_fields)
+
+                # 3. Create New Members
+                for data_to_create in members_to_create:
+                    new_member = CustomUser.objects.create_user(
+                        name=data_to_create['name'],
+                        email=data_to_create['email'],
+                        phone=data_to_create['phone'],
+                        user_type=CustomUser.USER_TYPE_CHOICES[0][0],  # 'user'
+                    )
+                    # Link new member to parent
+                    ClientFamily.objects.create(parent=parent_client, member=new_member)
+                    RealtorClient.objects.create(
+                        realtor=request_realtor,
+                        client=new_member,
+                    )
+                    created_member_instances.append(new_member)
+
+                # 4. Send Emails for Newly Created Members
+                for member in created_member_instances:
+                    email_sent = self.generate_token_and_send_email(
+                        member, request_realtor
+                    )
+                    if not email_sent:
+                        print(
+                            f'ERROR: Failed to send \
+                                  set password email to \
+                                      newly created member {member.email}'
+                        )
+        except Exception as e:
+            return Response(
+                {
+                    'success': False,
+                    'message': f'Server error during client update: {str(e)}',
+                    'code': 'server_error',
+                    'status': status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    'data': {},
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        # Fetch ALL current members associated
+        # with the parent (updated and newly created)
+        all_current_member_ids = ClientFamily.objects.filter(
+            parent=parent_client
+        ).values_list('member_id', flat=True)
+        all_current_members = CustomUser.objects.filter(id__in=all_current_member_ids)
+        updated_members_data = ClientSerializer(all_current_members, many=True).data
+
+        return Response(
+            {
+                'success': True,
+                'message': 'Members updated successfully.',
+                'status': status.HTTP_200_OK,
+                'data': {
+                    'members': updated_members_data,
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def delete(self, request, member_id):
+        request_client = request.user
+        member = CustomUser.objects.filter(id=member_id).first()
+        if not member:
+            return Response(
+                {
+                    'success': False,
+                    'message': 'Member not found.',
+                    'code': 'not_found',
+                    'status': status.HTTP_404_NOT_FOUND,
+                    'data': {},
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        valid_member = ClientFamily.objects.filter(
+            parent=request_client, member=member
+        ).first()
+        if not valid_member:
+            return Response(
+                {
+                    'success': False,
+                    'message': 'Not a valid member.',
+                    'code': 'not_found',
+                    'status': status.HTTP_404_NOT_FOUND,
+                    'data': {},
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        valid_member.delete()
+        member.delete()
+        return Response(
+            {
+                'success': True,
+                'message': 'Member deleted successfully.',
+                'status': status.HTTP_200_OK,
+                'data': {},
             },
             status=status.HTTP_200_OK,
         )
@@ -1572,6 +1875,7 @@ class SetPasswordConfirmView(APIView):
 
                 set_password_token.user.set_password(request_password)
                 set_password_token.user.is_email_verified = True
+                set_password_token.user.last_activity = timezone.now()
                 set_password_token.user.save()
                 # delete used token
                 set_password_token.delete()

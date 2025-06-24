@@ -8,6 +8,8 @@ from user_management.validator import SignupRequest
 
 class UserSerializer(serializers.ModelSerializer):
     user_type = serializers.CharField(read_only=True)
+    profile_pic = serializers.ImageField(required=False, allow_null=True)
+    phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = CustomUser
@@ -21,6 +23,7 @@ class UserSerializer(serializers.ModelSerializer):
             'user_type',
             'address',
             'timestamp',
+            'profile_pic',
         ]
 
 
@@ -38,6 +41,7 @@ class SignUpSerializer(serializers.ModelSerializer):
             'phone',
             'password',
             'company',
+            'region',
             'license_id',
             'address',
             'user_type',
@@ -45,7 +49,29 @@ class SignUpSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'password': {'write_only': True},
             'user_type': {'default': 'realtor'},
+            'phone': {'required': False, 'allow_blank': True},
         }
+
+    def validate_region(self, value):
+        """Validate region"""
+        if value not in [
+            'Contra Costa',
+            'Alameda',
+            'San Mateo',
+            'Santa Clara',
+            'Solano',
+            'Sonoma',
+            'Napa',
+            'Marin',
+            'San Joaquin',
+            'Sacramento',
+            'San Francisco',
+        ]:
+            raise serializers.ValidationError(
+                'Region must be one of: Contra Costa, Alameda, San Mateo, Santa Clara, '
+                'Solano, Sonoma, Napa, Marin, San Joaquin, Sacramento, San Francisco.'
+            )
+        return value
 
     def validate_password(self, value):
         """Validate password according to requirements"""
@@ -88,7 +114,8 @@ class SignUpSerializer(serializers.ModelSerializer):
             email=validated_data['email'],
             password=validated_data['password'],
             name=validated_data['name'],
-            phone=validated_data['phone'],
+            phone=validated_data.get('phone', ''),
+            region=validated_data['region'],
             company=validated_data.get('company', ''),
             license_id=validated_data.get('license_id', ''),
             address=validated_data.get('address', ''),
@@ -144,7 +171,7 @@ class UnverifiedTokenSerializer(serializers.Serializer):
 class ClientPostRequestSerializer(serializers.Serializer):
     name = serializers.CharField(required=True)
     email = serializers.EmailField(required=True)
-    phone = serializers.CharField(required=True)
+    phone = serializers.CharField(required=False, allow_blank=True)
 
     def validate_email(self, email):
         if CustomUser.objects.filter(email=email).exists():
@@ -152,6 +179,8 @@ class ClientPostRequestSerializer(serializers.Serializer):
         return email
 
     def validate_phone(self, phone):
+        if not phone:
+            return phone
         if CustomUser.objects.filter(phone=phone).exists():
             raise serializers.ValidationError('Phone number already exists')
         if not re.match(r'^\d{10}$', phone):
@@ -170,11 +199,19 @@ class ClientPostRequestSerializer(serializers.Serializer):
         ):
             errors['email'] = ['Enter a valid email address.']
 
-        if 'phone' not in data:
-            errors['phone'] = ['This field is required.']
-        elif CustomUser.objects.filter(phone=data.get('phone')).exists():
+        # if 'phone' not in data:
+        #     errors['phone'] = ['This field is required.']
+        if (
+            'phone' in data
+            and data['phone']
+            and CustomUser.objects.filter(phone=data.get('phone')).exists()
+        ):
             errors['phone'] = ['Phone number already exists']
-        elif 'phone' in data and not re.match(r'^\d{10}$', data.get('phone')):
+        elif (
+            'phone' in data
+            and data['phone']
+            and not re.match(r'^\d{10}$', data.get('phone'))
+        ):
             errors['phone'] = ['Phone number must be 10 digits']
 
         if 'name' not in data:
@@ -190,6 +227,7 @@ class ClientPutRequestSerializer(serializers.Serializer):
     name = serializers.CharField(required=False)
     email = serializers.EmailField(required=False)
     phone = serializers.CharField(required=False)
+    is_active = serializers.BooleanField(required=False)
 
     def validate_email(self, email):
         request_client = self.context.get('request_client')
@@ -227,7 +265,15 @@ class ClientSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'name', 'email', 'phone', 'property_count']
+        fields = [
+            'id',
+            'name',
+            'email',
+            'phone',
+            'property_count',
+            'last_activity',
+            'is_active',
+        ]
 
     def get_property_count(self, obj):
         return obj.client_properties.count()
@@ -238,7 +284,7 @@ class ClientDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'name', 'email', 'phone', 'members']
+        fields = ['id', 'name', 'email', 'phone', 'is_active', 'members']
 
 
 class ClientGetSerializer(serializers.Serializer):
@@ -250,3 +296,34 @@ class ClientGetSerializer(serializers.Serializer):
     page = serializers.IntegerField(min_value=1, required=False)
     limit = serializers.IntegerField(min_value=1, required=False)
     active = serializers.BooleanField(required=False, allow_null=True)
+
+
+class UpdatePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+    confirm_password = serializers.CharField(required=True)
+
+    def validate(self, data):
+        """
+        Check that the passwords match and validate the new password.
+        """
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError(
+                {'confirm_password': 'New passwords do not match.'}
+            )
+
+        if data['new_password'] == data['current_password']:
+            raise serializers.ValidationError(
+                {
+                    'new_password': 'New password cannot be the \
+                      same as the current password.'
+                }
+            )
+
+        # Validate password strength
+        try:
+            SignupRequest.validate_password(data['new_password'])
+        except ValueError as e:
+            raise serializers.ValidationError({'new_password': str(e)})
+
+        return data

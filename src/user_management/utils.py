@@ -56,3 +56,12 @@ class IsRealtor(BasePermission):
             and request.user.is_authenticated
             and request.user.user_type == 'realtor'
         )
+
+
+class IsClient(BasePermission):
+    def has_permission(self, request, view):
+        return (
+            request.user
+            and request.user.is_authenticated
+            and request.user.user_type == 'user'
+        )

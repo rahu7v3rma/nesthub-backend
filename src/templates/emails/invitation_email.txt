@@ -1,12 +1,19 @@
-Hi,
+Hi {{ buyers_first_name }},
+I’m excited to invite you to NestHub, your private home search dashboard where we’ll keep everything organized and easy to access as you explore potential homes.
 
-We are excited to invite you to complete the second part of your child's scholarship application. Your input is vital in ensuring a thorough review of your application.
+With NestHub, you can:
+✔️ View all the homes we’ve seen together
+⭐ Rate each home on a 1–5 scale so you never forget how you felt about it
+📝 Leave notes and comments to capture your thoughts in real time
+📁 Access disclosures, offer deadlines, and comparables instantly
+📊 See what you offered on a home and what it ultimately sold for
+No more getting confused about which homes you liked and didn’t. NestHub keeps everything in one place so we can focus on what really matters: finding your home.
 
-Please click the link below to access and complete the form: {{ survey_link }}
+👉 Click below to set your password and jump in:
+{{ set_password_link }}
 
-If the link doesn't work, you can copy and paste the following URL into your browser: {{ survey_link }}
+Let me know if you need anything, I’m here to help!
 
-Thank you for your time and participation!
-
-Best regards,
-NH Scholarship Team
+Best
+{{ realtors_name}}
+{{ realtors_contact_info }}

@@ -79,6 +79,7 @@ class CustomerAdmin(CustomUserAdmin):
     def has_add_permission(self, request):
         return True  # Enable add permission for Customers
 
+
 @admin.register(CustomToken)
 class CustomTokenAdmin(admin.ModelAdmin):
     pass
